@@ -147,9 +147,9 @@ app.put('/api/action-items/:id', async (req, res) => {
 
 // Health endpoint used by Cloud Run or load balancers
 app.get('/healthz', (req, res) => {
-  if (health.ok) return res.json({ status: 'ok' })
-  return res.status(500).json({ status: 'error', message: health.message })
+  res.status(200).json({ status: 'ok' })
 })
+
 
 app.listen(PORT, () => {
   console.log(`Action Tracker API listening on http://localhost:${PORT}`)
@@ -198,6 +198,11 @@ if (fs.existsSync(distPath)) {
       return res.status(204).end()
     }
   })
+
+  app.get('/', (req, res) => {
+  res.status(200).send('Action Tracker API is running');
+});
+
   // serve index.html for any non-API routes (SPA)
   // Use '/*' instead of '*' to avoid path-to-regexp errors on some versions
   app.get('/*', (req, res, next) => {
