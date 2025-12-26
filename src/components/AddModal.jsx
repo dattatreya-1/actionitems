@@ -28,6 +28,14 @@ export default function AddModal({ columns, defaultOwner, onClose, onSave }) {
     col.key !== 'id' && col.key !== 'actions'
   )
 
+  // Helper to check if a field should be a date input
+  const isDateField = (col) => {
+    const keyLower = (col.key || '').toLowerCase()
+    const labelLower = (col.label || '').toLowerCase()
+    return keyLower.includes('date') || keyLower.includes('deadline') || 
+           labelLower.includes('date') || labelLower.includes('deadline')
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -52,7 +60,7 @@ export default function AddModal({ columns, defaultOwner, onClose, onSave }) {
                     <option value="Kams">Kams</option>
                     <option value="Sunny">Sunny</option>
                   </select>
-                ) : col.key.includes('date') || col.key === 'deadline' ? (
+                ) : isDateField(col) ? (
                   <input
                     type="date"
                     value={formData[col.key] || ''}
