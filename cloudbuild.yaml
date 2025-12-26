@@ -32,13 +32,11 @@ steps:
           --region europe-west1 \
           --platform managed \
           --allow-unauthenticated \
-          --set-env-vars BQ_TABLE="${_BQ_TABLE:-gen-lang-client-0815432790.oberoiventures.actionitemstable}"
+          --service-account oberoventuresactionitems@gen-lang-client-0815432790.iam.gserviceaccount.com \
+          --set-env-vars BQ_TABLE="gen-lang-client-0815432790.oberoiventures.actionitemstable"
 
 images:
   - 'gcr.io/$PROJECT_ID/actionitems:$SHORT_SHA'
 
 options:
   logging: CLOUD_LOGGING_ONLY
-
-substitutions:
-  _BQ_TABLE: 'gen-lang-client-0815432790.oberoiventures.actionitemstable'
