@@ -45,6 +45,15 @@ Windows PowerShell example:
       --allow-unauthenticated \
       --set-env-vars BQ_TABLE="gen-lang-client-0815432790.oberoiventures.actionitemstable"
 
+  Troubleshooting on Cloud Run:
+  - Check health: curl -i https://YOUR-SERVICE-URL/healthz
+  - Check API: curl -i https://YOUR-SERVICE-URL/api/action-items
+  - If you see 401/"unauthorized" in API responses, ensure your Cloud Run service account has BigQuery roles: jobUser and dataViewer (dataEditor if you use updates/deletes).
+  - If you see 503 Service Unavailable, check revision readiness and logs:
+    gcloud run revisions list --service actionitems --region europe-west1 --format="table(NAME, READY, STATUS, TRAFFIC_PERCENTAGE)"
+    gcloud run services logs read actionitems --region europe-west1 --limit 200
+  - Favicon route is handled explicitly; if favicon is missing, server returns 204 to avoid 500.
+
   Notes on credentials:
   - Preferred: grant the Cloud Run service a service account with BigQuery Data Viewer / Data Editor permissions. Use `--service-account` in the deploy command to run as that service account.
   - If you must use a service account key file, store it in Secret Manager and reference it as an environment variable or mount it at runtime. Do NOT commit the key into your repo.
