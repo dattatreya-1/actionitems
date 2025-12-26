@@ -180,8 +180,7 @@ process.on('unhandledRejection', (reason, p) => {
 
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err && err.stack ? err.stack : err)
-  // allow process to exit after logging (Cloud Run will restart the container)
-  try { process.exit(1) } catch (e) { /* ignore */ }
+ 
 })
 
 // Serve frontend static files (if built)
@@ -211,7 +210,7 @@ if (fs.existsSync(distPath)) {
       const index = path.join(distPath, 'index.html')
       if (!fs.existsSync(index)) {
         console.error('index.html missing in dist')
-        return res.status(500).send('server error')
+        return res.status(400).send('Frontend not built')
       }
       return res.sendFile(index)
     } catch (err) {
