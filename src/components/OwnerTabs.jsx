@@ -17,27 +17,34 @@ export default function OwnerTabs({ data, owners = [], columns: columnsProp = []
     return va > vb ? -1 : 1
   })
 
+  const slug = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+
   return (
     <section className="owner-tabs">
-      <div className="tabs">
-        {owners.map(o => (
-          <button key={o} className={o === active ? 'active' : ''} onClick={() => setActive(o)}>
-            {o}
-          </button>
-        ))}
-      </div>
+      <div className="owner-layout">
+        <aside className="tabs vertical">
+          {owners.map(o => (
+            <button
+              key={o}
+              className={`tab-btn ${slug(o)} ${o === active ? 'active' : ''}`}
+              onClick={() => setActive(o)}
+            >
+              {o}
+            </button>
+          ))}
+        </aside>
 
-      <div className="tab-content">
-        {active === 'Admin' ? (
-          <AdminView initialData={data} columns={columns} />
-        ) : (
-          <>
-            <h2>{active}</h2>
-            {filtered.length === 0 ? (
-              <div>No records for {active}</div>
-            ) : (
-              <div className="table-wrap">
-                <table>
+        <div className="tab-content">
+          {active === 'Admin' ? (
+            <AdminView initialData={data} columns={columns} />
+          ) : (
+            <>
+              <h2>{active}</h2>
+              {filtered.length === 0 ? (
+                <div>No records for {active}</div>
+              ) : (
+                <div className="table-wrap">
+                  <table>
                     <thead>
                       <tr>
                         {columns.map(c => (
@@ -69,7 +76,6 @@ export default function OwnerTabs({ data, owners = [], columns: columnsProp = []
                                   }}>Edit</button>
                                 </div>
                               ) : (
-                                // render primitive or stringified value
                                 (function formatCell(v) {
                                   if (v === null || v === undefined) return ''
                                   if (typeof v === 'object') return v.value ?? JSON.stringify(v)
@@ -81,11 +87,12 @@ export default function OwnerTabs({ data, owners = [], columns: columnsProp = []
                         </tr>
                       ))}
                     </tbody>
-                </table>
-              </div>
-            )}
-          </>
-        )}
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </section>
   )

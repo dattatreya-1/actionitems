@@ -33,6 +33,27 @@ th:nth-child(10), td:nth-child(10){ min-width:60px }
 th:nth-child(11), td:nth-child(11){ min-width:80px }
 th:nth-child(12), td:nth-child(12){ min-width:90px }
 
+/* Owner tabs (vertical on left) */
+.owner-layout{ display:flex; gap:20px; align-items:flex-start }
+.tabs.vertical{ display:flex; flex-direction:column; min-width:150px }
+.tab-btn{ display:block; width:100%; padding:10px 12px; border-radius:8px; border:none; cursor:pointer; color:#fff; font-weight:600; text-align:left }
+.tab-btn:not(.active){ opacity:0.9 }
+.tab-btn.active{ box-shadow: 0 2px 6px rgba(0,0,0,0.15); transform:translateY(-1px) }
+
+/* per-owner colors */
+.tab-btn.florence{ background: linear-gradient(90deg,#6c5ce7,#a29bfe) }
+.tab-btn.dan{ background: linear-gradient(90deg,#0984e3,#74b9ff) }
+.tab-btn.kams{ background: linear-gradient(90deg,#00b894,#55efc4) }
+.tab-btn.sunny{ background: linear-gradient(90deg,#fdcb6e,#ffeaa7); color:#222 }
+.tab-btn.admin{ background: linear-gradient(90deg,#d63031,#ff7675) }
+
+/* small screens: stack vertically and use horizontal tabs instead */
+@media (max-width: 640px){
+  .owner-layout{ flex-direction:column }
+  .tabs.vertical{ flex-direction:row; gap:8px; overflow:auto; min-width:0 }
+  .tab-btn{ white-space:nowrap; border-radius:6px }
+}
+
 .action-btn{ background:transparent; border:1px solid var(--accent); color:var(--accent); padding:4px 8px; border-radius:4px; cursor:pointer }
 .action-btn:hover{ background:var(--accent); color:#fff }
 .action-btn.delete{ padding:6px 8px; width:36px; height:28px; display:inline-flex; align-items:center; justify-content:center }
