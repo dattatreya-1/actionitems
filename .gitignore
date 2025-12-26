@@ -25,3 +25,6 @@ gen-lang-client-0815432790-07161bb65021.json
 
 # Local server credentials
 server/*.json
+ 
+# Folder used for moving sensitive files during cleanup — keep it ignored
+secret-backup/
