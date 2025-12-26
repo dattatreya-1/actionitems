@@ -32,7 +32,7 @@ steps:
           --region europe-west1 \
           --platform managed \
           --allow-unauthenticated \
-          --service-account oberoventuresactionitems@gen-lang-client-0815432790.iam.gserviceaccount.com \
+          --service-account oberoiventuresactioitems@gen-lang-client-0815432790.iam.gserviceaccount.com \
           --set-env-vars BQ_TABLE="gen-lang-client-0815432790.oberoiventures.actionitemstable"
 
 images:
