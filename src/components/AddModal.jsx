@@ -15,10 +15,12 @@ export default function AddModal({ columns, defaultOwner, onClose, onSave }) {
     e.preventDefault()
     setLoading(true)
     try {
-      await onSave(formData)
+      const result = await onSave(formData)
+      console.log('Create result:', result)
     } catch (err) {
-      alert('Failed to create action item: ' + err.message)
-    } finally {
+      console.error('Create error:', err)
+      const errorMsg = err.message || 'Unknown error'
+      alert('Failed to create action item: ' + errorMsg)
       setLoading(false)
     }
   }

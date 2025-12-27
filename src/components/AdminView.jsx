@@ -2,8 +2,10 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { getColumns, createActionItem } from '../services/dataService'
 import EditModal from './EditModal'
 import AddModal from './AddModal'
+import ReportsView from './ReportsView'
 
 export default function AdminView({ initialData = [], columns = [] }) {
+  const [activeTab, setActiveTab] = useState('data')
   const [owner, setOwner] = useState('')
   const [business, setBusiness] = useState('')
   const [from, setFrom] = useState('')
@@ -25,6 +27,7 @@ export default function AdminView({ initialData = [], columns = [] }) {
   const statusKey = findColumnKey('status')
   const deadlineKey = findColumnKey('deadline')
   const businessKey = findColumnKey('business')
+  const minKey = findColumnKey('min')
 
   const owners = useMemo(() => {
     const set = new Set(initialData.map(d => d[ownerKey]).filter(Boolean))
@@ -69,11 +72,35 @@ export default function AdminView({ initialData = [], columns = [] }) {
   return (
     <section className="admin">
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
-        <h2>Admin</h2>
-        <button className="add-btn" onClick={() => setShowAddModal(true)}>+ Add Action Item</button>
+        <div style={{display: 'flex', gap: '1rem', alignItems: 'center'}}>
+          <h2>Admin</h2>
+          <div style={{display: 'flex', gap: '0.5rem'}}>
+            <button 
+              className={activeTab === 'data' ? 'tab-active' : 'tab-inactive'}
+              onClick={() => setActiveTab('data')}
+              style={{padding: '6px 16px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer', background: activeTab === 'data' ? '#2b6cb0' : 'white', color: activeTab === 'data' ? 'white' : '#333'}}
+            >
+              Data
+            </button>
+            <button 
+              className={activeTab === 'reports' ? 'tab-active' : 'tab-inactive'}
+              onClick={() => setActiveTab('reports')}
+              style={{padding: '6px 16px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer', background: activeTab === 'reports' ? '#2b6cb0' : 'white', color: activeTab === 'reports' ? 'white' : '#333'}}
+            >
+              Reports
+            </button>
+          </div>
+        </div>
+        {activeTab === 'data' && (
+          <button className="add-btn" onClick={() => setShowAddModal(true)}>+ Add Action Item</button>
+        )}
       </div>
 
-      <div className="filters">
+      {activeTab === 'reports' ? (
+        <ReportsView data={initialData} columns={cols} />
+      ) : (
+        <>
+          <div className="filters">
         <label>
           Owner:
           <select value={owner} onChange={e => setOwner(e.target.value)}>
@@ -156,7 +183,24 @@ export default function AdminView({ initialData = [], columns = [] }) {
           </tbody>
         </table>
         <div className="admin-count">Showing {filtered.length} of {initialData.length}</div>
+        <div className="totals-summary" style={{marginTop: '1rem', padding: '1rem', background: '#f0f9ff', borderRadius: '8px', display: 'flex', gap: '2rem', flexWrap: 'wrap'}}>
+          <div>
+            <strong>Total Deliverables:</strong> {filtered.length}
+          </div>
+          <div>
+            <strong>Total Minutes:</strong> {filtered.reduce((sum, row) => sum + (parseFloat(row[minKey]) || 0), 0).toFixed(0)}
+          </div>
+          <div>
+            <strong>Total Hours:</strong> {(filtered.reduce((sum, row) => sum + (parseFloat(row[minKey]) || 0), 0) / 60).toFixed(2)}
+          </div>
+          <div>
+            <strong>Total Days (÷6):</strong> {(filtered.reduce((sum, row) => sum + (parseFloat(row[minKey]) || 0), 0) / 60 / 6).toFixed(2)}
+          </div>
+        </div>
       </div>
+        </>
+      )}
+      
       {editingRow && (
         <EditModal row={editingRow} columns={cols} onClose={() => setEditingRow(null)} onSave={async (updated) => {
           try {

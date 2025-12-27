@@ -3,8 +3,8 @@ import AdminView from './AdminView'
 import AddModal from './AddModal'
 import { getColumns, createActionItem } from '../services/dataService'
 
-export default function OwnerTabs({ data, owners = [], columns: columnsProp = [] }) {
-  const [active, setActive] = useState(owners[0] || '')
+export default function OwnerTabs({ data, owners = [], columns: columnsProp = [], selectedTab = null }) {
+  const [active, setActive] = useState(selectedTab || owners[0] || '')
   const [sortKey, setSortKey] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
   const [showAddModal, setShowAddModal] = useState(false)
@@ -72,19 +72,21 @@ export default function OwnerTabs({ data, owners = [], columns: columnsProp = []
   return (
     <section className="owner-tabs">
       <div className="owner-layout">
-        <aside className="tabs vertical">
-          {owners.map(o => (
-            <button
-              key={o}
-              className={`tab-btn ${slug(o)} ${o === active ? 'active' : ''}`}
-              onClick={() => setActive(o)}
-            >
-              {o}
-            </button>
-          ))}
-        </aside>
+        {!selectedTab && (
+          <aside className="tabs vertical">
+            {owners.map(o => (
+              <button
+                key={o}
+                className={`tab-btn ${slug(o)} ${o === active ? 'active' : ''}`}
+                onClick={() => setActive(o)}
+              >
+                {o}
+              </button>
+            ))}
+          </aside>
+        )}
 
-        <div className="tab-content">
+        <div className="tab-content" style={{width: selectedTab ? '100%' : 'auto'}}>
           {active === 'Admin' ? (
             <AdminView initialData={data} columns={columns} />
           ) : (
@@ -178,6 +180,20 @@ export default function OwnerTabs({ data, owners = [], columns: columnsProp = []
                       ))}
                     </tbody>
                   </table>
+                  <div className="totals-summary" style={{marginTop: '1rem', padding: '1rem', background: '#f0f9ff', borderRadius: '8px', display: 'flex', gap: '2rem', flexWrap: 'wrap'}}>
+                    <div>
+                      <strong>Total Deliverables:</strong> {filtered.length}
+                    </div>
+                    <div>
+                      <strong>Total Minutes:</strong> {filtered.reduce((sum, row) => sum + (parseFloat(row[findColumnKey('min')]) || 0), 0).toFixed(0)}
+                    </div>
+                    <div>
+                      <strong>Total Hours:</strong> {(filtered.reduce((sum, row) => sum + (parseFloat(row[findColumnKey('min')]) || 0), 0) / 60).toFixed(2)}
+                    </div>
+                    <div>
+                      <strong>Total Days (÷6):</strong> {(filtered.reduce((sum, row) => sum + (parseFloat(row[findColumnKey('min')]) || 0), 0) / 60 / 6).toFixed(2)}
+                    </div>
+                  </div>
                 </div>
               )}
             </>

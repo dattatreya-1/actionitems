@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react'
 import OwnerTabs from './components/OwnerTabs'
 import AdminView from './components/AdminView'
 import EditModal from './components/EditModal'
+import HomePage from './components/HomePage'
 import { fetchActionItems } from './services/dataService'
 
 export default function App() {
   const [data, setData] = useState([])
   const [columns, setColumns] = useState([])
   const [editingRow, setEditingRow] = useState(null)
+  const [selectedTab, setSelectedTab] = useState(null)
 
   useEffect(() => {
     function onOpenEdit(e) {
@@ -39,18 +41,32 @@ export default function App() {
 
   return (
     <div className="app">
-      <header>
-        <h1>Action Tracker Pro</h1>
-      </header>
-      <main>
-        {loading ? (
-          <div>Loading...</div>
-        ) : (
-          <>
-            <OwnerTabs data={data} columns={columns} owners={["Florence","Dan","Kams","Sunny","Admin"]} />
-          </>
-        )}
-      </main>
+      {!selectedTab ? (
+        <HomePage onSelectTab={setSelectedTab} />
+      ) : (
+        <>
+          <header>
+            <h1>Action Tracker Pro</h1>
+            <button className="back-home-btn" onClick={() => setSelectedTab(null)}>
+              ← Back to Home
+            </button>
+          </header>
+          <main>
+            {loading ? (
+              <div>Loading...</div>
+            ) : (
+              <>
+                <OwnerTabs 
+                  data={data} 
+                  columns={columns} 
+                  owners={["Florence","Dan","Kams","Sunny","Admin"]}
+                  selectedTab={selectedTab}
+                />
+              </>
+            )}
+          </main>
+        </>
+      )}
       {editingRow && (
         <EditModal row={editingRow.row} columns={editingRow.columns || columns} onClose={() => setEditingRow(null)} onSave={async (updated) => {
           try {

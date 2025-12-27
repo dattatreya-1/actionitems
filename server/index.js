@@ -107,29 +107,94 @@ app.get('/api/action-items', async (req, res) => {
 app.post('/api/action-items', async (req, res) => {
   try {
     const data = req.body || {}
+    console.log('Received POST data:', JSON.stringify(data, null, 2))
+    
     const keys = Object.keys(data)
     if (keys.length === 0) return res.status(400).json({ error: 'no fields provided' })
 
     const [project, dataset, table] = TABLE_FULL.split('.')
     
-    // Generate a unique ID (you can use UUID or timestamp-based)
-    const id = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    data.id = id
+    // Get table schema to see what columns exist
+    const tableRef = bq.dataset(dataset, { projectId: project }).table(table)
+    const [metadata] = await tableRef.getMetadata()
+    const fields = metadata.schema?.fields || []
+    const validColumns = fields.map(f => f.name)
+    
+    // Create a map of column name to type
+    const columnTypes = {}
+    fields.forEach(f => {
+      columnTypes[f.name] = f.type
+    })
+    
+    console.log('Available table columns:', validColumns)
+    console.log('Column types:', columnTypes)
+    
+    // Only include fields that exist in the table schema and convert types
+    const filteredData = {}
+    Object.keys(data).forEach(key => {
+      if (validColumns.includes(key)) {
+        let value = data[key]
+        const columnType = columnTypes[key]
+        
+        // Convert empty strings to null
+        if (value === '' || value === undefined) {
+          value = null
+        }
+        // Convert to integer for INT64 columns
+        else if (columnType === 'INT64' || columnType === 'INTEGER') {
+          value = value !== null ? parseInt(value, 10) : null
+          if (isNaN(value)) value = null
+        }
+        // Convert to float for FLOAT64 columns
+        else if (columnType === 'FLOAT64' || columnType === 'FLOAT') {
+          value = value !== null ? parseFloat(value) : null
+          if (isNaN(value)) value = null
+        }
+        
+        filteredData[key] = value
+      } else {
+        console.log(`Skipping field "${key}" - not in table schema`)
+      }
+    })
+    
+    // Generate ID only if the table has an id column
+    let generatedId = null
+    if (validColumns.includes('id')) {
+      generatedId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      filteredData.id = generatedId
+    }
+    
+    const allKeys = Object.keys(filteredData)
+    if (allKeys.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to insert' })
+    }
     
     // Build INSERT query
-    const allKeys = Object.keys(data)
     const columns = allKeys.map(k => `\`${k}\``).join(', ')
     const paramNames = allKeys.map((k, i) => `@p${i}`).join(', ')
     const params = {}
-    allKeys.forEach((k, i) => { params[`p${i}`] = data[k] })
+    allKeys.forEach((k, i) => { params[`p${i}`] = filteredData[k] })
 
     const query = `INSERT INTO \`${project}.${dataset}.${table}\` (${columns}) VALUES (${paramNames})`
+    console.log('Query:', query)
+    console.log('Params:', JSON.stringify(params, null, 2))
+    
     const [job] = await bq.createQueryJob({ query, params })
-    await job.getQueryResults()
-    res.json({ success: true, id })
+    const [result] = await job.getQueryResults()
+    console.log('Insert successful')
+    res.json({ success: true, id: generatedId })
   } catch (err) {
-    console.error('Error creating action-item', err && err.stack ? err.stack : err)
-    res.status(500).json({ error: 'internal server error' })
+    console.error('Error creating action-item:')
+    console.error('Message:', err.message)
+    console.error('Stack:', err.stack)
+    if (err.errors) {
+      console.error('BigQuery errors:', JSON.stringify(err.errors, null, 2))
+    }
+    res.status(500).json({ 
+      error: 'Create failed',
+      details: err.message,
+      bigQueryErrors: err.errors 
+    })
   }
 })
 

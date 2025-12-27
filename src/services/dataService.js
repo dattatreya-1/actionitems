@@ -157,13 +157,15 @@ export async function fetchActionItems() {
 }
 
 export async function deleteActionItem(id) {
-  const res = await fetch(`/api/action-items/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  const api = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+  const res = await fetch(`${api}/api/action-items/${encodeURIComponent(id)}`, { method: 'DELETE' })
   if (!res.ok) throw new Error('Delete failed')
   return res.json()
 }
 
 export async function updateActionItem(id, data) {
-  const res = await fetch(`/api/action-items/${encodeURIComponent(id)}`, {
+  const api = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+  const res = await fetch(`${api}/api/action-items/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
@@ -173,11 +175,20 @@ export async function updateActionItem(id, data) {
 }
 
 export async function createActionItem(data) {
-  const res = await fetch('/api/action-items', {
+  const api = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/action-items'
+  const res = await fetch(api, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   })
-  if (!res.ok) throw new Error('Create failed')
-  return res.json()
+  
+  const responseData = await res.json()
+  
+  if (!res.ok) {
+    const errorMsg = responseData.details || responseData.error || 'Create failed'
+    console.error('Create failed:', responseData)
+    throw new Error(errorMsg)
+  }
+  
+  return responseData
 }
