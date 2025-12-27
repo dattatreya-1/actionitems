@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import AdminView from './AdminView'
 import AddModal from './AddModal'
 import { getColumns, createActionItem } from '../services/dataService'
@@ -8,8 +8,56 @@ export default function OwnerTabs({ data, owners = [], columns: columnsProp = []
   const [sortKey, setSortKey] = useState(null)
   const [sortDir, setSortDir] = useState('asc')
   const [showAddModal, setShowAddModal] = useState(false)
+  
+  // Filter states
+  const [deadlineFrom, setDeadlineFrom] = useState('')
+  const [deadlineTo, setDeadlineTo] = useState('')
+  const [priority, setPriority] = useState('')
+  const [businessType, setBusinessType] = useState('')
+  const [business, setBusiness] = useState('')
+  const [status, setStatus] = useState('')
+  
   const columns = columnsProp && columnsProp.length ? columnsProp : getColumns()
-  const filtered = data.filter(d => d.owner === active)
+  
+  // Helper to find column key
+  const findColumnKey = (name) => {
+    const norm = String(name || '').replace(/[^a-z0-9]/gi, '').toLowerCase()
+    const found = columns.find(c => String(c.label || c.key || '').replace(/[^a-z0-9]/gi, '').toLowerCase().includes(norm))
+    return found ? found.key : null
+  }
+  
+  const deadlineKey = findColumnKey('deadline')
+  const priorityKey = findColumnKey('priority')
+  const businessTypeKey = findColumnKey('business type')
+  const businessKey = findColumnKey('business')
+  const statusKey = findColumnKey('status')
+  
+  // Get unique values for dropdowns
+  const ownerData = data.filter(d => d.owner === active)
+  
+  const priorities = useMemo(() => {
+    return Array.from(new Set(ownerData.map(d => d[priorityKey] || '').filter(Boolean)))
+  }, [ownerData, priorityKey])
+  
+  const businessTypes = useMemo(() => {
+    return Array.from(new Set(ownerData.map(d => d[businessTypeKey] || '').filter(Boolean)))
+  }, [ownerData, businessTypeKey])
+  
+  const statuses = useMemo(() => {
+    return Array.from(new Set(ownerData.map(d => d[statusKey] || '').filter(Boolean)))
+  }, [ownerData, statusKey])
+  
+  // Apply filters
+  const filtered = ownerData.filter(item => {
+    if (deadlineKey && deadlineFrom && item[deadlineKey] < deadlineFrom) return false
+    if (deadlineKey && deadlineTo && item[deadlineKey] > deadlineTo) return false
+    if (priorityKey && priority && item[priorityKey] !== priority) return false
+    if (businessTypeKey && businessType && item[businessTypeKey] !== businessType) return false
+    if (businessKey && business && !(String(item[businessKey] || '').toLowerCase().includes(business.toLowerCase()))) return false
+    if (statusKey && status && item[statusKey] !== status) return false
+    return true
+  })
+  
   const sorted = [...filtered]
   if (sortKey) sorted.sort((a, b) => {
     const va = String(a[sortKey] ?? '')
@@ -45,8 +93,45 @@ export default function OwnerTabs({ data, owners = [], columns: columnsProp = []
                 <h2>{active}</h2>
                 <button className="add-btn" onClick={() => setShowAddModal(true)}>+ Add Action Item</button>
               </div>
+              
+              <div className="filters">
+                <label>
+                  Deadline From:
+                  <input type="date" value={deadlineFrom} onChange={e => setDeadlineFrom(e.target.value)} />
+                </label>
+                <label>
+                  Deadline To:
+                  <input type="date" value={deadlineTo} onChange={e => setDeadlineTo(e.target.value)} />
+                </label>
+                <label>
+                  Priority:
+                  <select value={priority} onChange={e => setPriority(e.target.value)}>
+                    <option value="">(any)</option>
+                    {priorities.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </label>
+                <label>
+                  Business Type:
+                  <select value={businessType} onChange={e => setBusinessType(e.target.value)}>
+                    <option value="">(any)</option>
+                    {businessTypes.map(bt => <option key={bt} value={bt}>{bt}</option>)}
+                  </select>
+                </label>
+                <label>
+                  Business:
+                  <input value={business} onChange={e => setBusiness(e.target.value)} placeholder="search business" />
+                </label>
+                <label>
+                  Status:
+                  <select value={status} onChange={e => setStatus(e.target.value)}>
+                    <option value="">(any)</option>
+                    {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </label>
+              </div>
+              
               {filtered.length === 0 ? (
-                <div>No records for {active}</div>
+                <div>No records matching filters for {active}</div>
               ) : (
                 <div className="table-wrap">
                   <table>
