@@ -652,21 +652,6 @@ process.on('uncaughtException', (err) => {
 // Serve frontend static files (if built)
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath))
-  // Serve favicon explicitly to avoid 500s when file is missing
-  app.get('/favicon.ico', (req, res) => {
-    try {
-      const ico = path.join(distPath, 'favicon.ico')
-      if (fs.existsSync(ico)) return res.sendFile(ico)
-      return res.status(204).end()
-    } catch (err) {
-      console.error('Error serving favicon.ico', err && err.stack ? err.stack : err)
-      return res.status(204).end()
-    }
-  })
-
-  app.get('/', (req, res) => {
-  res.status(200).send('Action Tracker API is running');
-});
 
   // serve index.html for any non-API routes (SPA)
   // Use '/*' instead of '*' to avoid path-to-regexp errors on some versions
@@ -683,6 +668,11 @@ if (fs.existsSync(distPath)) {
       console.error('Error serving index.html', err && err.stack ? err.stack : err)
       return res.status(500).send('server error')
     }
+  })
+} else {
+  // No frontend build, just show API status
+  app.get('/', (req, res) => {
+    res.status(200).send('Action Tracker API is running - frontend not built')
   })
 }
 
