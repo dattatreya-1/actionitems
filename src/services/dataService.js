@@ -98,14 +98,12 @@ export function getColumns() {
 }
 
 export async function fetchActionItems() {
-  const api = import.meta.env.VITE_API_URL || '/api/action-items'
-  if (!api) {
-    // no API configured; return mock
-    return new Promise(resolve => setTimeout(() => resolve(MOCK), 200))
-  }
+  // In production (Cloud Run), use relative URL. In dev, use localhost:5000
+  const baseUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000')
+  const endpoint = `${baseUrl}/api/action-items`
 
   try {
-    const res = await fetch(api)
+    const res = await fetch(endpoint)
     if (!res.ok) {
       // Try to capture error body for debugging
       let txt = ''
@@ -155,16 +153,20 @@ export async function fetchActionItems() {
     }
     // If it's an array of items
     if (Array.isArray(json)) return { rows: json.map(normalizeRow), columns: COLUMNS }
-    return { rows: MOCK, columns: COLUMNS }
+    
+    // No valid data structure - throw error instead of returning mock
+    console.error('Unexpected API response structure:', json)
+    throw new Error('Invalid API response structure')
   } catch (err) {
-    console.warn('fetchActionItems failed, falling back to mock', err)
-    return { rows: MOCK, columns: COLUMNS }
+    console.error('fetchActionItems failed:', err)
+    // Re-throw to let component handle the error
+    throw err
   }
 }
 
 export async function deleteActionItem(id) {
-  const api = import.meta.env.VITE_API_URL || 'http://localhost:5000'
-  const res = await fetch(`${api}/api/action-items/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  const baseUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000')
+  const res = await fetch(`${baseUrl}/api/action-items/${encodeURIComponent(id)}`, { method: 'DELETE' })
   if (!res.ok) throw new Error('Delete failed')
   return res.json()
 }
