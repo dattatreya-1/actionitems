@@ -12,7 +12,8 @@ export default function RepublicServicesTable() {
 
   const fetchData = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/republicservices')
+      const baseUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000')
+      const response = await fetch(`${baseUrl}/api/republicservices`)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -41,7 +42,8 @@ export default function RepublicServicesTable() {
   const handleDelete = async (id) => {
     if (!confirm('Delete this record? Note: Recently added records cannot be deleted from BigQuery for up to 90 minutes due to streaming buffer restrictions. This will remove it from the UI.')) return
     try {
-      const response = await fetch(`http://localhost:5000/api/republicservices/${id}`, { method: 'DELETE' })
+      const baseUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000')
+    const response = await fetch(`${baseUrl}/api/republicservices/${id}`, { method: 'DELETE' })
       if (!response.ok) {
         // If BigQuery streaming buffer error, just remove from UI
         console.warn('BigQuery delete failed (likely streaming buffer), removing from UI only')
@@ -59,9 +61,10 @@ export default function RepublicServicesTable() {
   const handleSave = async (formData) => {
     try {
       const method = formData.id ? 'PUT' : 'POST'
-      const url = formData.id 
-        ? `http://localhost:5000/api/republicservices/${formData.id}`
-        : 'http://localhost:5000/api/republicservices'
+const baseUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000')
+      const url = formData.id
+        ? `${baseUrl}/api/republicservices/${formData.id}`
+        : `${baseUrl}/api/republicservices`
       
       await fetch(url, {
         method,
@@ -178,7 +181,8 @@ function RepublicServicesFormModal({ data, onClose, onSave }) {
         formData.append('files', file)
       })
 
-      const response = await fetch('http://localhost:5000/api/upload', {
+      const baseUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000')
+      const response = await fetch(`${baseUrl}/api/upload`, {
         method: 'POST',
         body: formData
       })
