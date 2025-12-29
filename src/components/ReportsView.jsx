@@ -419,7 +419,8 @@ export default function ReportsView({ data, columns }) {
             </tbody>
           </table>
         </div>
-        </div>
+      )}
+      </div>
       )}
     </div>
   )
