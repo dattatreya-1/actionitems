@@ -274,14 +274,32 @@ app.put('/api/action-items/:id', async (req, res) => {
     
     const setClauses = keys.map((k, i) => `\`${k}\` = @p${i}`).join(', ')
     const params = {}
-    keys.forEach((k, i) => { params[`p${i}`] = convertedUpdates[k] })
+    const types = {}
+    keys.forEach((k, i) => { 
+      params[`p${i}`] = convertedUpdates[k] 
+      // Provide type for null values
+      if (convertedUpdates[k] === null || convertedUpdates[k] === '') {
+        const columnType = columnTypes[k]
+        if (columnType === 'INT64' || columnType === 'INTEGER') {
+          types[`p${i}`] = 'INT64'
+        } else if (columnType === 'FLOAT64' || columnType === 'FLOAT') {
+          types[`p${i}`] = 'FLOAT64'
+        } else if (columnType === 'BOOL' || columnType === 'BOOLEAN') {
+          types[`p${i}`] = 'BOOL'
+        } else {
+          types[`p${i}`] = 'STRING'
+        }
+      }
+    })
     params.idParam = id
+    types.idParam = 'STRING'
 
     const query = `UPDATE \`${project}.${dataset}.${table}\` SET ${setClauses} WHERE id = @idParam`
     console.log('Update query:', query)
     console.log('Update params:', JSON.stringify(params, null, 2))
+    console.log('Update types:', JSON.stringify(types, null, 2))
     
-    const [job] = await bq.createQueryJob({ query, params })
+    const [job] = await bq.createQueryJob({ query, params, types })
     const [result] = await job.getQueryResults()
     console.log('Update successful for id:', id)
     res.json({ success: true })
