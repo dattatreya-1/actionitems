@@ -178,7 +178,11 @@ export async function updateActionItem(id, data) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   })
-  if (!res.ok) throw new Error('Update failed')
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ error: 'Update failed' }))
+    const errorMsg = errorData.details || errorData.error || 'Update failed'
+    throw new Error(errorMsg)
+  }
   return res.json()
 }
 

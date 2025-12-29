@@ -240,18 +240,55 @@ app.put('/api/action-items/:id', async (req, res) => {
     if (keys.length === 0) return res.status(400).json({ error: 'no fields to update' })
 
     const [project, dataset, table] = TABLE_FULL.split('.')
+    
+    // Get table schema to validate columns and convert types
+    const tableRef = bq.dataset(dataset, { projectId: project }).table(table)
+    const [metadata] = await tableRef.getMetadata()
+    const fields = metadata.schema?.fields || []
+    const columnTypes = {}
+    fields.forEach(f => { columnTypes[f.name] = f.type })
+    
+    // Convert values to appropriate types
+    const convertedUpdates = {}
+    keys.forEach(k => {
+      let value = updates[k]
+      const columnType = columnTypes[k]
+      
+      // Convert empty strings to null
+      if (value === '' || value === undefined) {
+        value = null
+      }
+      // Convert to integer for INT64 columns
+      else if (columnType === 'INT64' || columnType === 'INTEGER') {
+        value = value !== null ? parseInt(value, 10) : null
+        if (isNaN(value)) value = null
+      }
+      // Convert to float for FLOAT64 columns
+      else if (columnType === 'FLOAT64' || columnType === 'FLOAT') {
+        value = value !== null ? parseFloat(value) : null
+        if (isNaN(value)) value = null
+      }
+      
+      convertedUpdates[k] = value
+    })
+    
     const setClauses = keys.map((k, i) => `\`${k}\` = @p${i}`).join(', ')
     const params = {}
-    keys.forEach((k, i) => { params[`p${i}`] = updates[k] })
+    keys.forEach((k, i) => { params[`p${i}`] = convertedUpdates[k] })
     params.idParam = id
 
     const query = `UPDATE \`${project}.${dataset}.${table}\` SET ${setClauses} WHERE id = @idParam`
+    console.log('Update query:', query)
+    console.log('Update params:', JSON.stringify(params, null, 2))
+    
     const [job] = await bq.createQueryJob({ query, params })
-    await job.getQueryResults()
+    const [result] = await job.getQueryResults()
+    console.log('Update successful for id:', id)
     res.json({ success: true })
   } catch (err) {
     console.error('Error updating action-item', err && err.stack ? err.stack : err)
-    res.status(500).json({ error: 'internal server error' })
+    const errorMsg = err.message || 'internal server error'
+    res.status(500).json({ error: errorMsg, details: err.message })
   }
 })
 
