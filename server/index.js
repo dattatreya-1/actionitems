@@ -233,11 +233,9 @@ app.put('/api/action-items/:id', async (req, res) => {
   try {
     const id = req.params.id
     const updates = req.body || {}
-    // Remove id if present
-    delete updates.id
-
-    const keys = Object.keys(updates)
-    if (keys.length === 0) return res.status(400).json({ error: 'no fields to update' })
+    
+    console.log('Attempting to update action item with id:', id)
+    console.log('Update data received:', JSON.stringify(updates, null, 2))
 
     const [project, dataset, table] = TABLE_FULL.split('.')
     
@@ -245,8 +243,26 @@ app.put('/api/action-items/:id', async (req, res) => {
     const tableRef = bq.dataset(dataset, { projectId: project }).table(table)
     const [metadata] = await tableRef.getMetadata()
     const fields = metadata.schema?.fields || []
+    const validColumns = fields.map(f => f.name)
     const columnTypes = {}
     fields.forEach(f => { columnTypes[f.name] = f.type })
+    
+    console.log('Available columns:', validColumns)
+    
+    // Check if table has an 'id' column
+    if (!validColumns.includes('id')) {
+      console.error('Table does not have an "id" column. Available columns:', validColumns)
+      return res.status(400).json({ 
+        error: 'Cannot update: table does not have an id column',
+        details: 'The BigQuery table needs an "id" column to support updates. Available columns: ' + validColumns.join(', ')
+      })
+    }
+    
+    // Remove id from updates if present
+    delete updates.id
+    
+    const keys = Object.keys(updates)
+    if (keys.length === 0) return res.status(400).json({ error: 'no fields to update' })
     
     // Convert values to appropriate types
     const convertedUpdates = {}
@@ -294,7 +310,7 @@ app.put('/api/action-items/:id', async (req, res) => {
     params.idParam = id
     types.idParam = 'STRING'
 
-    const query = `UPDATE \`${project}.${dataset}.${table}\` SET ${setClauses} WHERE id = @idParam`
+    const query = `UPDATE \`${project}.${dataset}.${table}\` SET ${setClauses} WHERE \`id\` = @idParam`
     console.log('Update query:', query)
     console.log('Update params:', JSON.stringify(params, null, 2))
     console.log('Update types:', JSON.stringify(types, null, 2))
