@@ -2,7 +2,7 @@
 FROM node:18 AS build-frontend
 WORKDIR /app
 
-# Copy frontend package files and install dependencies
+# Copy package files and install all dependencies
 COPY package.json package-lock.json* ./
 RUN npm ci
 
@@ -18,19 +18,18 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
 
-# Copy and install backend dependencies
-COPY server/package*.json ./server/
-WORKDIR /app/server
+# Copy package files and install production dependencies
+COPY package.json package-lock.json* ./
 RUN npm ci --only=production
 
-# Copy backend source
-COPY server/ ./
+# Copy server source code
+COPY server/ ./server/
 
 # Copy built frontend from build stage
-COPY --from=build-frontend /app/dist /app/dist
+COPY --from=build-frontend /app/dist ./dist
 
 # Cloud Run uses PORT environment variable
 EXPOSE 8080
 
 # Start the backend server (which serves the frontend)
-CMD ["node", "index.js"]
+CMD ["node", "server/index.js"]
