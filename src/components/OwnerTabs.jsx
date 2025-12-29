@@ -157,8 +157,8 @@ export default function OwnerTabs({ data, owners = [], columns: columnsProp = []
                               {col.key === 'actions' ? (
                                 <div style={{display:'flex',gap:8}}>
                                   <button title="Delete" className="action-btn delete" onClick={async () => {
-                                    const uniqueId = row.row || row.id
-                                    if (!confirm(`Delete row ${uniqueId}?`)) return
+                                    const uniqueId = row.id
+                                    if (!confirm(`Delete item ${uniqueId}?`)) return
                                     try {
                                       await (await import('../services/dataService')).deleteActionItem(uniqueId)
                                       window.location.reload()

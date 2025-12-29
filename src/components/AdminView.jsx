@@ -161,8 +161,8 @@ export default function AdminView({ initialData = [], columns = [] }) {
                     {c.key === 'actions' ? (
                       <div style={{display:'flex',gap:8}}>
                         <button title="Delete" className="action-btn delete" onClick={async () => {
-                          const uniqueId = r.row || r.id
-                          if (!confirm(`Delete row ${uniqueId}?`)) return
+                          const uniqueId = r.id
+                          if (!confirm(`Delete item ${uniqueId}?`)) return
                           try {
                             await (await import('../services/dataService')).deleteActionItem(uniqueId)
                             window.location.reload()
