@@ -213,13 +213,32 @@ app.post('/api/action-items', async (req, res) => {
   }
 })
 
-// Delete an item by id (expects id to uniquely identify row)
+// Delete an item by row (expects row to uniquely identify row)
 app.delete('/api/action-items/:id', async (req, res) => {
   try {
-    const id = req.params.id
+    const rowId = req.params.id
     const [project, dataset, table] = TABLE_FULL.split('.')
-    const query = `DELETE FROM \`${project}.${dataset}.${table}\` WHERE id = @id`
-    const [job] = await bq.createQueryJob({ query, params: { id } })
+    
+    // Get table schema to check row column type
+    const tableRef = bq.dataset(dataset, { projectId: project }).table(table)
+    const [metadata] = await tableRef.getMetadata()
+    const fields = metadata.schema?.fields || []
+    const columnTypes = {}
+    fields.forEach(f => { columnTypes[f.name] = f.type })
+    
+    const params = {}
+    const types = {}
+    const rowColumnType = columnTypes['row']
+    if (rowColumnType === 'INT64' || rowColumnType === 'INTEGER') {
+      params.rowParam = parseInt(rowId, 10)
+      types.rowParam = 'INT64'
+    } else {
+      params.rowParam = rowId
+      types.rowParam = 'STRING'
+    }
+    
+    const query = `DELETE FROM \`${project}.${dataset}.${table}\` WHERE \`row\` = @rowParam`
+    const [job] = await bq.createQueryJob({ query, params, types })
     await job.getQueryResults()
     res.json({ success: true })
   } catch (err) {
@@ -228,13 +247,13 @@ app.delete('/api/action-items/:id', async (req, res) => {
   }
 })
 
-// Update an item by id. Body should contain key/value pairs to update.
+// Update an item by row. Body should contain key/value pairs to update.
 app.put('/api/action-items/:id', async (req, res) => {
   try {
-    const id = req.params.id
+    const rowId = req.params.id
     const updates = req.body || {}
     
-    console.log('Attempting to update action item with id:', id)
+    console.log('Attempting to update action item with row:', rowId)
     console.log('Update data received:', JSON.stringify(updates, null, 2))
 
     const [project, dataset, table] = TABLE_FULL.split('.')
@@ -249,16 +268,17 @@ app.put('/api/action-items/:id', async (req, res) => {
     
     console.log('Available columns:', validColumns)
     
-    // Check if table has an 'id' column
-    if (!validColumns.includes('id')) {
-      console.error('Table does not have an "id" column. Available columns:', validColumns)
+    // Check if table has a 'row' column
+    if (!validColumns.includes('row')) {
+      console.error('Table does not have a "row" column. Available columns:', validColumns)
       return res.status(400).json({ 
-        error: 'Cannot update: table does not have an id column',
-        details: 'The BigQuery table needs an "id" column to support updates. Available columns: ' + validColumns.join(', ')
+        error: 'Cannot update: table does not have a row column',
+        details: 'The BigQuery table needs a "row" column to support updates. Available columns: ' + validColumns.join(', ')
       })
     }
     
-    // Remove id from updates if present
+    // Remove row from updates if present
+    delete updates.row
     delete updates.id
     
     const keys = Object.keys(updates)
@@ -307,17 +327,24 @@ app.put('/api/action-items/:id', async (req, res) => {
         }
       }
     })
-    params.idParam = id
-    types.idParam = 'STRING'
+    params.rowParam = rowId
+    // Set type for rowParam based on the row column type
+    const rowColumnType = columnTypes['row']
+    if (rowColumnType === 'INT64' || rowColumnType === 'INTEGER') {
+      types.rowParam = 'INT64'
+      params.rowParam = parseInt(rowId, 10)
+    } else {
+      types.rowParam = 'STRING'
+    }
 
-    const query = `UPDATE \`${project}.${dataset}.${table}\` SET ${setClauses} WHERE \`id\` = @idParam`
+    const query = `UPDATE \`${project}.${dataset}.${table}\` SET ${setClauses} WHERE \`row\` = @rowParam`
     console.log('Update query:', query)
     console.log('Update params:', JSON.stringify(params, null, 2))
     console.log('Update types:', JSON.stringify(types, null, 2))
     
     const [job] = await bq.createQueryJob({ query, params, types })
     const [result] = await job.getQueryResults()
-    console.log('Update successful for id:', id)
+    console.log('Update successful for row:', rowId)
     res.json({ success: true })
   } catch (err) {
     console.error('Error updating action-item', err && err.stack ? err.stack : err)

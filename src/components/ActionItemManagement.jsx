@@ -79,9 +79,10 @@ export default function ActionItemManagement() {
       {editingRow && (
         <EditModal row={editingRow.row} columns={editingRow.columns || columns} onClose={() => setEditingRow(null)} onSave={async (updated) => {
           try {
-            console.log('Updating row with id:', editingRow.row.id)
+            const uniqueId = editingRow.row.row || editingRow.row.id
+            console.log('Updating row with id:', uniqueId)
             console.log('Update data:', updated)
-            await (await import('../services/dataService')).updateActionItem(editingRow.row.id, updated)
+            await (await import('../services/dataService')).updateActionItem(uniqueId, updated)
             setEditingRow(null)
             // refresh data
             const result = await fetchActionItems()
