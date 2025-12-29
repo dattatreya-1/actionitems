@@ -79,12 +79,17 @@ export default function ActionItemManagement() {
       {editingRow && (
         <EditModal row={editingRow.row} columns={editingRow.columns || columns} onClose={() => setEditingRow(null)} onSave={async (updated) => {
           try {
+            console.log('Updating row with id:', editingRow.row.id)
+            console.log('Update data:', updated)
             await (await import('../services/dataService')).updateActionItem(editingRow.row.id, updated)
             setEditingRow(null)
             // refresh data
             const result = await fetchActionItems()
             if (result && result.rows) { setData(result.rows); setColumns(result.columns || []) }
-          } catch (err) { alert('Update failed: '+err) }
+          } catch (err) { 
+            console.error('Update error:', err)
+            alert('Update failed: ' + err.message) 
+          }
         }} />
       )}
     </div>
