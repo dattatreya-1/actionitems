@@ -23,16 +23,26 @@ export default function ActionItemManagement() {
   useEffect(() => {
     let mounted = true
     const fetchData = async () => {
-      const result = await fetchActionItems()
-      if (!mounted) return
-      if (result && result.rows) {
-        setData(result.rows)
-        setColumns(result.columns || [])
-      } else if (Array.isArray(result)) {
-        setData(result)
-        setColumns([])
+      try {
+        const result = await fetchActionItems()
+        if (!mounted) return
+        if (result && result.rows) {
+          setData(result.rows)
+          setColumns(result.columns || [])
+        } else if (Array.isArray(result)) {
+          setData(result)
+          setColumns([])
+        }
+      } catch (err) {
+        console.error('Failed to fetch action items:', err)
+        if (mounted) {
+          alert('Failed to load data from server. Please check that the backend is running.')
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
       }
-      setLoading(false)
     }
     fetchData()
     return () => { mounted = false }
