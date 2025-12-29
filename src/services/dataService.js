@@ -89,7 +89,8 @@ const COLUMNS = [
   { key: 'deadline', label: 'DEADLINE' },
   { key: 'min', label: 'MIN' },
   { key: 'priority', label: 'PRIORITY' },
-  { key: 'status', label: 'STATUS' }
+  { key: 'status', label: 'STATUS' },
+  { key: 'comments', label: 'COMMENTS' }
 ]
 
 export function getColumns() {
@@ -145,7 +146,12 @@ export async function fetchActionItems() {
 
     if (json && json.rows && Array.isArray(json.rows)) {
       const rows = json.rows.map(normalizeRow)
-      return { rows, columns: json.columns }
+      // Always ensure 'actions' column is included at the beginning
+      let columns = json.columns || []
+      if (!columns.find(c => c.key === 'actions')) {
+        columns = [{ key: 'actions', label: 'ACTIONS' }, ...columns]
+      }
+      return { rows, columns }
     }
     // If it's an array of items
     if (Array.isArray(json)) return { rows: json.map(normalizeRow), columns: COLUMNS }

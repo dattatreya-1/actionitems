@@ -4,15 +4,48 @@
   font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
 }
 body{ margin:0; background:#f7fafc; color:#111 }
-.app{ max-width:1100px; margin:24px auto; padding:16px; background:white; box-shadow:0 2px 8px rgba(0,0,0,0.05)}
+.app{ max-width:100%; margin:0; padding:16px; background:white; min-height:100vh }
 header h1{ margin:0 0 12px }
 .tabs{ display:flex; gap:8px; margin-bottom:12px }
 .tabs button{ padding:8px 12px; border:1px solid #ddd; background:#fff; cursor:pointer }
 .tabs button.active{ background:var(--accent); color:#fff; border-color:var(--accent)}
 table{ width:100%; border-collapse:collapse }
 th,td{ text-align:left; padding:8px; border-bottom:1px solid #eee }
-.filters{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px }
-.filters label{ display:flex; flex-direction:column; font-size:13px }
+.filters{ 
+  display:flex; 
+  gap:16px; 
+  align-items:flex-end; 
+  flex-wrap:wrap; 
+  margin-bottom:16px; 
+  padding:16px 20px; 
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
+  border-radius: 8px;
+  border: 1px solid #d1e0ff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.filters label{ 
+  display:flex; 
+  flex-direction:column; 
+  font-size:13px;
+  font-weight: 500;
+  color: #1e3a8a;
+}
+.filters input,
+.filters select {
+  margin-top: 4px;
+  padding: 6px 10px;
+  border: 1px solid #c7d2fe;
+  border-radius: 6px;
+  font-size: 13px;
+  background: white;
+  min-width: 140px;
+}
+.filters input:focus,
+.filters select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
 .admin-count{ margin-top:8px; color:var(--muted) }
 
 /* Header style per visual */
@@ -154,17 +187,25 @@ th:nth-child(12), td:nth-child(12){ min-width:90px }
 }
 
 .form-group input,
-.form-group select {
+.form-group select,
+.form-group textarea {
   width: 100%;
   padding: 8px 12px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 14px;
   box-sizing: border-box;
+  font-family: inherit;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 60px;
 }
 
 .form-group input:focus,
-.form-group select:focus {
+.form-group select:focus,
+.form-group textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.1);
@@ -487,3 +528,207 @@ header {
   }
 }
 
+/* Property Management Styles */
+.property-home {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+  padding: 60px 20px;
+}
+
+.property-header {
+  text-align: center;
+  margin-bottom: 80px;
+  animation: fadeInDown 0.6s ease-out;
+}
+
+.property-header h1 {
+  font-size: 4rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 16px;
+}
+
+.property-tagline {
+  font-size: 1.3rem;
+  color: #64748b;
+  margin: 0;
+  font-weight: 400;
+}
+
+.property-tabs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 32px;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.property-tab-card {
+  background: white;
+  border-radius: 20px;
+  padding: 40px 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border: 2px solid transparent;
+  animation: fadeInUp 0.6s ease-out backwards;
+}
+
+.property-tab-card:nth-child(1) { animation-delay: 0.1s; }
+.property-tab-card:nth-child(2) { animation-delay: 0.2s; }
+
+.property-tab-card.action-items:hover {
+  border-color: #4f46e5;
+  transform: translateY(-8px);
+  box-shadow: 0 12px 32px rgba(79, 70, 229, 0.2);
+}
+
+.property-tab-card.vendors:hover {
+  border-color: #10b981;
+  transform: translateY(-8px);
+  box-shadow: 0 12px 32px rgba(16, 185, 129, 0.2);
+}
+
+.property-tab-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.property-tab-card h2 {
+  margin: 0 0 12px;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.property-tab-card p {
+  margin: 0 0 24px;
+  font-size: 1rem;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.property-tab-btn {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.property-tab-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+}
+
+.property-content {
+  min-height: 100vh;
+}
+
+.property-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.property-nav h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #1e293b;
+}
+
+.back-property-btn {
+  padding: 10px 20px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
+  transition: all 0.2s ease;
+}
+
+.back-property-btn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  transform: translateX(-2px);
+}
+
+/* Vendor Management Styles */
+.vendor-management {
+  padding: 24px;
+}
+
+.vendor-header h2 {
+  margin: 0 0 24px;
+  font-size: 2rem;
+  color: #1e293b;
+}
+
+.vendor-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 24px;
+}
+
+.vendor-tab {
+  padding: 12px 24px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  color: #64748b;
+}
+
+.vendor-tab:hover {
+  color: #1e293b;
+}
+
+.vendor-tab.active {
+  font-weight: 600;
+}
+
+.vendor-content {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.vendor-placeholder {
+  text-align: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+  font-size: 1.1rem;
+}
+
+.vendor-details h3 {
+  margin: 0 0 16px;
+  font-size: 1.5rem;
+  color: #1e293b;
+}
+
+.vendor-details p {
+  color: #64748b;
+  line-height: 1.6;
+}

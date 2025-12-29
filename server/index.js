@@ -2,6 +2,8 @@ import express from 'express'
 import fs from 'fs'
 import cors from 'cors'
 import { BigQuery } from '@google-cloud/bigquery'
+import { Storage } from '@google-cloud/storage'
+import multer from 'multer'
 import path from 'path'
 import process from 'process'
 
@@ -54,6 +56,19 @@ if (credsPath) {
   // No key file provided; rely on ADC (works on Cloud Run when a service account is attached)
   bq = new BigQuery()
 }
+
+// Initialize Google Cloud Storage
+const storage = new Storage(credsPath ? { keyFilename: credsPath } : {})
+const bucketName = 'vendor-attachments'
+const bucket = storage.bucket(bucketName)
+
+// Configure multer for file uploads (store in memory)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+})
 
 // Health status object used by /healthz
 let health = { ok: false, message: 'starting' }
@@ -237,6 +252,362 @@ app.put('/api/action-items/:id', async (req, res) => {
   } catch (err) {
     console.error('Error updating action-item', err && err.stack ? err.stack : err)
     res.status(500).json({ error: 'internal server error' })
+  }
+})
+
+// HVAC Table Endpoints
+const HVAC_TABLE = 'gen-lang-client-0815432790.oberoiventures.hvac'
+const REPUBLIC_SERVICES_TABLE = 'gen-lang-client-0815432790.oberoiventures.republicservices'
+const CERTASITE_TABLE = 'gen-lang-client-0815432790.oberoiventures.certasite'
+
+// File upload endpoint for vendor attachments
+app.post('/api/upload', upload.array('files', 10), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' })
+    }
+
+    const uploadPromises = req.files.map(async (file) => {
+      // Generate unique filename with timestamp
+      const timestamp = Date.now()
+      const randomStr = Math.random().toString(36).substring(2, 8)
+      const ext = path.extname(file.originalname)
+      const filename = `${timestamp}_${randomStr}${ext}`
+      
+      const blob = bucket.file(filename)
+      const blobStream = blob.createWriteStream({
+        resumable: false,
+        metadata: {
+          contentType: file.mimetype,
+          metadata: {
+            originalName: file.originalname,
+          },
+        },
+      })
+
+      return new Promise((resolve, reject) => {
+        blobStream.on('error', (err) => {
+          console.error('Upload error:', err)
+          reject(err)
+        })
+
+        blobStream.on('finish', () => {
+          // File uploaded successfully - return public URL
+          // Note: Bucket must have allUsers permission or uniform bucket-level access configured
+          const publicUrl = `https://storage.googleapis.com/${bucketName}/${filename}`
+          resolve(publicUrl)
+        })
+
+        blobStream.end(file.buffer)
+      })
+    })
+
+    const urls = await Promise.all(uploadPromises)
+    res.json({ urls })
+  } catch (err) {
+    console.error('Error uploading files:', err && err.stack ? err.stack : err)
+    res.status(500).json({ error: 'File upload failed' })
+  }
+})
+
+// Get all HVAC records
+app.get('/api/hvac', async (req, res) => {
+  try {
+    const [project, dataset, table] = HVAC_TABLE.split('.')
+    const query = `SELECT * FROM \`${project}.${dataset}.${table}\` ORDER BY work_date DESC`
+    const [job] = await bq.createQueryJob({ query })
+    const [rows] = await job.getQueryResults()
+    res.json({ rows })
+  } catch (err) {
+    console.error('Error fetching HVAC records:', err)
+    res.status(500).json({ error: 'Failed to fetch HVAC records', details: err.message })
+  }
+})
+
+// Create HVAC record
+app.post('/api/hvac', async (req, res) => {
+  try {
+    const data = req.body || {}
+    const [project, dataset, table] = HVAC_TABLE.split('.')
+    
+    // Generate unique ID
+    const id = `hvac_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // Prepare row for streaming insert
+    const row = {
+      id: id,
+      s_no: data.s_no ? parseInt(data.s_no, 10) : null,
+      work_date: data.work_date || null,
+      description: data.description || null,
+      photo_attachments: Array.isArray(data.photo_attachments) ? data.photo_attachments : [],
+      file_attachments: Array.isArray(data.file_attachments) ? data.file_attachments : [],
+      created_by: data.created_by || null,
+      created_at: new Date().toISOString(),
+      updated_at: null
+    }
+    
+    // Use streaming insert (no parameter type issues)
+    const tableRef = bq.dataset(dataset, { projectId: project }).table(table)
+    await tableRef.insert([row])
+    
+    res.json({ success: true, id })
+  } catch (err) {
+    console.error('Error creating HVAC record:', err)
+    res.status(500).json({ error: 'Failed to create HVAC record', details: err.message })
+  }
+})
+
+// Update HVAC record
+app.put('/api/hvac/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const updates = req.body || {}
+    delete updates.id
+    
+    const keys = Object.keys(updates)
+    if (keys.length === 0) return res.status(400).json({ error: 'no fields to update' })
+
+    const [project, dataset, table] = HVAC_TABLE.split('.')
+    updates.updated_at = new Date().toISOString()
+    
+    const updatedKeys = Object.keys(updates)
+    const setClauses = updatedKeys.map((k, i) => `\`${k}\` = @p${i}`).join(', ')
+    const params = {}
+    updatedKeys.forEach((k, i) => { params[`p${i}`] = updates[k] })
+    params.idParam = id
+
+    const query = `UPDATE \`${project}.${dataset}.${table}\` SET ${setClauses} WHERE id = @idParam`
+    const [job] = await bq.createQueryJob({ query, params })
+    await job.getQueryResults()
+    
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Error updating HVAC record:', err)
+    res.status(500).json({ error: 'Failed to update HVAC record', details: err.message })
+  }
+})
+
+// Delete HVAC record
+app.delete('/api/hvac/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const [project, dataset, table] = HVAC_TABLE.split('.')
+    const query = `DELETE FROM \`${project}.${dataset}.${table}\` WHERE id = '${id}'`
+    const [job] = await bq.createQueryJob({ query })
+    await job.getQueryResults()
+    console.log(`Deleted HVAC record: ${id}`)
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Error deleting HVAC record:', err)
+    res.status(500).json({ error: 'Failed to delete HVAC record', details: err.message })
+  }
+})
+
+// ============================================
+// REPUBLIC SERVICES ENDPOINTS
+// ============================================
+
+// Get all Republic Services records
+app.get('/api/republicservices', async (req, res) => {
+  try {
+    const [project, dataset, table] = REPUBLIC_SERVICES_TABLE.split('.')
+    const query = `SELECT * FROM \`${project}.${dataset}.${table}\` ORDER BY work_date DESC`
+    const [job] = await bq.createQueryJob({ query })
+    const [rows] = await job.getQueryResults()
+    res.json({ rows })
+  } catch (err) {
+    console.error('Error fetching Republic Services records:', err)
+    res.status(500).json({ error: 'Failed to fetch Republic Services records', details: err.message })
+  }
+})
+
+// Create Republic Services record
+app.post('/api/republicservices', async (req, res) => {
+  try {
+    const data = req.body || {}
+    const [project, dataset, table] = REPUBLIC_SERVICES_TABLE.split('.')
+    
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substring(2, 15)
+    
+    const row = {
+      id: `rs_${timestamp}_${random}`,
+      s_no: parseInt(data.s_no, 10) || null,
+      work_date: data.work_date || null,
+      description: data.description || null,
+      photo_attachments: Array.isArray(data.photo_attachments) ? data.photo_attachments : [],
+      file_attachments: Array.isArray(data.file_attachments) ? data.file_attachments : [],
+      created_by: data.created_by || null,
+      created_at: new Date().toISOString(),
+      updated_at: null
+    }
+
+    const tableRef = bq.dataset(dataset).table(table)
+    await tableRef.insert([row])
+    
+    console.log('Republic Services record saved:', row.id)
+    res.json({ success: true, id: row.id })
+  } catch (err) {
+    console.error('Error saving Republic Services record:', err)
+    res.status(500).json({ error: 'Failed to save Republic Services record', details: err.message })
+  }
+})
+
+// Update Republic Services record
+app.put('/api/republicservices/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const data = req.body || {}
+    const [project, dataset, table] = REPUBLIC_SERVICES_TABLE.split('.')
+    
+    const query = `
+      UPDATE \`${project}.${dataset}.${table}\`
+      SET 
+        s_no = @sNo,
+        work_date = @workDate,
+        description = @description,
+        photo_attachments = @photoAttachments,
+        file_attachments = @fileAttachments,
+        updated_at = @updatedAt
+      WHERE id = @idParam
+    `
+    
+    const params = {
+      idParam: id,
+      sNo: data.s_no ? parseInt(data.s_no, 10) : null,
+      workDate: data.work_date || null,
+      description: data.description || null,
+      photoAttachments: Array.isArray(data.photo_attachments) ? data.photo_attachments : [],
+      fileAttachments: Array.isArray(data.file_attachments) ? data.file_attachments : [],
+      updatedAt: new Date().toISOString()
+    }
+    
+    const [job] = await bq.createQueryJob({ query, params })
+    await job.getQueryResults()
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Error updating Republic Services record:', err)
+    res.status(500).json({ error: 'Failed to update Republic Services record', details: err.message })
+  }
+})
+
+// Delete Republic Services record
+app.delete('/api/republicservices/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const [project, dataset, table] = REPUBLIC_SERVICES_TABLE.split('.')
+    const query = `DELETE FROM \`${project}.${dataset}.${table}\` WHERE id = '${id}'`
+    const [job] = await bq.createQueryJob({ query })
+    await job.getQueryResults()
+    console.log(`Deleted Republic Services record: ${id}`)
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Error deleting Republic Services record:', err)
+    res.status(500).json({ error: 'Failed to delete Republic Services record', details: err.message })
+  }
+})
+
+// ============================================
+// CERTASITE ENDPOINTS
+// ============================================
+
+// Get all Certasite records
+app.get('/api/certasite', async (req, res) => {
+  try {
+    const [project, dataset, table] = CERTASITE_TABLE.split('.')
+    const query = `SELECT * FROM \`${project}.${dataset}.${table}\` ORDER BY work_date DESC`
+    const [job] = await bq.createQueryJob({ query })
+    const [rows] = await job.getQueryResults()
+    res.json({ rows })
+  } catch (err) {
+    console.error('Error fetching Certasite records:', err)
+    res.status(500).json({ error: 'Failed to fetch Certasite records', details: err.message })
+  }
+})
+
+// Create Certasite record
+app.post('/api/certasite', async (req, res) => {
+  try {
+    const data = req.body || {}
+    const [project, dataset, table] = CERTASITE_TABLE.split('.')
+    
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substring(2, 15)
+    
+    const row = {
+      id: `cs_${timestamp}_${random}`,
+      s_no: parseInt(data.s_no, 10) || null,
+      work_date: data.work_date || null,
+      description: data.description || null,
+      photo_attachments: Array.isArray(data.photo_attachments) ? data.photo_attachments : [],
+      file_attachments: Array.isArray(data.file_attachments) ? data.file_attachments : [],
+      created_by: data.created_by || null,
+      created_at: new Date().toISOString(),
+      updated_at: null
+    }
+
+    const tableRef = bq.dataset(dataset).table(table)
+    await tableRef.insert([row])
+    
+    console.log('Certasite record saved:', row.id)
+    res.json({ success: true, id: row.id })
+  } catch (err) {
+    console.error('Error saving Certasite record:', err)
+    res.status(500).json({ error: 'Failed to save Certasite record', details: err.message })
+  }
+})
+
+// Update Certasite record
+app.put('/api/certasite/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const data = req.body || {}
+    const [project, dataset, table] = CERTASITE_TABLE.split('.')
+    
+    const query = `
+      UPDATE \`${project}.${dataset}.${table}\`
+      SET 
+        s_no = @sNo,
+        work_date = @workDate,
+        description = @description,
+        photo_attachments = @photoAttachments,
+        file_attachments = @fileAttachments,
+        updated_at = @updatedAt
+      WHERE id = @idParam
+    `
+    
+    const params = {
+      idParam: id,
+      sNo: data.s_no ? parseInt(data.s_no, 10) : null,
+      workDate: data.work_date || null,
+      description: data.description || null,
+      photoAttachments: Array.isArray(data.photo_attachments) ? data.photo_attachments : [],
+      fileAttachments: Array.isArray(data.file_attachments) ? data.file_attachments : [],
+      updatedAt: new Date().toISOString()
+    }
+    
+    const [job] = await bq.createQueryJob({ query, params })
+    await job.getQueryResults()
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Error updating Certasite record:', err)
+    res.status(500).json({ error: 'Failed to update Certasite record', details: err.message })
+  }
+})
+
+// Delete Certasite record
+app.delete('/api/certasite/:id', async (req, res) => {
+  try {
+    const { id } = req.params
+    const [project, dataset, table] = CERTASITE_TABLE.split('.')
+    const query = `DELETE FROM \`${project}.${dataset}.${table}\` WHERE id = '${id}'`
+    const [job] = await bq.createQueryJob({ query })
+    await job.getQueryResults()
+    console.log(`Deleted Certasite record: ${id}`)
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Error deleting Certasite record:', err)
+    res.status(500).json({ error: 'Failed to delete Certasite record', details: err.message })
   }
 })
 

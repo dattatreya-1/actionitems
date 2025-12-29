@@ -79,6 +79,24 @@ export default function AddModal({ columns, defaultOwner, onClose, onSave }) {
                     <option value="Completed">Completed</option>
                     <option value="On Hold">On Hold</option>
                   </select>
+                ) : col.key === 'priority' ? (
+                  <select
+                    value={formData[col.key] || ''}
+                    onChange={e => handleChange(col.key, e.target.value)}
+                  >
+                    <option value="">Select Priority</option>
+                    <option value="V High">V High</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                  </select>
+                ) : col.key === 'comments' ? (
+                  <textarea
+                    value={formData[col.key] || ''}
+                    onChange={e => handleChange(col.key, e.target.value)}
+                    placeholder={`Enter ${col.label.toLowerCase()}`}
+                    rows="3"
+                  />
                 ) : (
                   <input
                     type="text"
